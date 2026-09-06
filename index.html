@@ -152,6 +152,29 @@
   .empty{font-size:13px;color:var(--muted);padding:8px 2px;}
 
   footer{margin:24px 16px 0;font-size:11px;color:var(--muted);line-height:1.5;}
+
+  .update-banner{
+    display:none;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin:14px 16px 0;
+    padding:12px 14px;
+    border-radius:10px;
+    background:var(--warning-bg);
+    border:1px solid var(--warning);
+    color:#fff;
+    font-size:13px;
+  }
+  .update-banner button{
+    background:var(--warning);
+    color:#3D2C0A;
+    border:none;
+    font-weight:600;
+    padding:8px 12px;
+    white-space:nowrap;
+  }
+  .version-tag{font-size:10px;color:var(--muted);margin-top:6px;}
 </style>
 </head>
 <body>
@@ -161,6 +184,11 @@
     <h1>Sin Frutos Secos</h1>
     <span>Open Food Facts</span>
   </header>
+
+  <div class="update-banner" id="updateBanner">
+    <span class="update-text"></span>
+    <button id="btnReload">Actualizar</button>
+  </div>
 
   <div class="scanner-wrap">
     <div id="reader"></div>
@@ -202,6 +230,7 @@
 
   <footer>
     Los datos de producto vienen de Open Food Facts, una base colaborativa: puede faltar el producto o estar incompleto, sobre todo con marcas locales italianas. Cuando el resultado sea "sin datos" o "revisar", comprueba siempre la etiqueta física. Esta app no sustituye la lectura del envase.
+    <div class="version-tag" id="versionTag"></div>
   </footer>
 
 </div>
@@ -209,6 +238,50 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script>
 (function(){
+
+  // ---------- Control de versión ----------
+  // IMPORTANTE: al modificar esta app, sube SIEMPRE junto con index.html
+  // un version.json actualizado con el mismo número, o el aviso de
+  // actualización no funcionará (o avisará de una versión que no existe).
+  const APP_VERSION = "1.2.0";
+
+  function compareVersions(a, b){
+    const pa = String(a).split('.').map(Number);
+    const pb = String(b).split('.').map(Number);
+    for(let i=0; i<Math.max(pa.length, pb.length); i++){
+      const na = pa[i] || 0, nb = pb[i] || 0;
+      if(na > nb) return 1;
+      if(na < nb) return -1;
+    }
+    return 0;
+  }
+
+  function showUpdateBanner(remoteVersion){
+    const el = document.getElementById('updateBanner');
+    el.querySelector('.update-text').textContent =
+      `Hay una versión nueva (v${remoteVersion}). Estás usando v${APP_VERSION}.`;
+    el.style.display = 'flex';
+  }
+
+  async function checkForUpdate(){
+    try{
+      const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
+      if(!res.ok) return;
+      const data = await res.json();
+      if(data.version && compareVersions(data.version, APP_VERSION) > 0){
+        showUpdateBanner(data.version);
+      }
+    } catch(e){
+      // Sin conexión o version.json no disponible: no molestamos al usuario con esto.
+    }
+  }
+
+  document.getElementById('btnReload').addEventListener('click', ()=>{
+    location.href = location.pathname + '?v=' + Date.now();
+  });
+
+  document.getElementById('versionTag').textContent = `v${APP_VERSION}`;
+  checkForUpdate();
 
   // ---------- Términos de frutos secos (IT / ES / EN) ----------
   const NUT_TERMS = [
@@ -302,11 +375,17 @@
   }
 
   function renderUnknown(barcode){
+    const offUrl = `https://world.openfoodfacts.org/product/${encodeURIComponent(barcode)}`;
+    const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(barcode)}`;
     renderResult({
       status:"unknown",
       title:"Sin datos para este producto",
       sub:`Código ${barcode} no encontrado en Open Food Facts.`,
-      detailHtml:"Revisa la etiqueta a mano, o pega los ingredientes abajo en la herramienta de comprobación de texto."
+      detailHtml:`
+        Revisa la etiqueta a mano, o pega los ingredientes abajo en la herramienta de comprobación de texto.<br><br>
+        <a href="${offUrl}" target="_blank" rel="noopener" style="color:#fff;">→ Añadir este producto a Open Food Facts</a><br>
+        <a href="${googleUrl}" target="_blank" rel="noopener" style="color:#fff;">→ Buscar este código en Google</a>
+      `
     });
     addHistory(barcode, "unknown");
   }
