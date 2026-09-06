@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sin Frutos Secos — Escáner</title>
+<style>
+  :root{
+    --ink:#1B2420;
+    --surface:#FFFFFF;
+    --paper:#EFEDE6;
+    --line:#D8D5CC;
+    --muted:#6B7280;
+    --accent:#4B5D45;
+    --danger-bg:#3D0F0B;
+    --danger:#E4483A;
+    --warning-bg:#3D2C0A;
+    --warning:#E8A93B;
+    --safe-bg:#0D2B18;
+    --safe:#4CAF6E;
+    --unknown-bg:#26282A;
+    --unknown:#9AA0A6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:520px;margin:0 auto;padding:0 0 48px;}
+  header{
+    padding:20px 20px 14px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    border-bottom:1px solid var(--line);
+    background:var(--paper);
+    position:sticky;
+    top:0;
+    z-index:5;
+  }
+  header h1{font-size:17px;margin:0;letter-spacing:.2px;}
+  header span{font-size:12px;color:var(--muted);}
+
+  .scanner-wrap{
+    margin:16px 16px 0;
+    border-radius:14px;
+    overflow:hidden;
+    background:#000;
+    position:relative;
+    aspect-ratio:4/3;
+  }
+  #reader{width:100%;height:100%;}
+  #reader video{object-fit:cover;width:100%!important;height:100%!important;}
+  .scan-guide{
+    position:absolute;inset:0;
+    pointer-events:none;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .scan-guide .box{
+    width:72%;height:38%;
+    border:2px solid rgba(255,255,255,.85);
+    border-radius:10px;
+    box-shadow:0 0 0 999px rgba(0,0,0,.35);
+  }
+  .scanner-off{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    color:#cfcfcf;font-size:13px;text-align:center;padding:20px;
+  }
+
+  .controls-row{display:flex;gap:10px;margin:12px 16px 0;}
+  button{
+    font-family:inherit;
+    font-size:14px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink);
+    padding:11px 14px;
+    cursor:pointer;
+  }
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+  button:active{transform:scale(.98);}
+  .controls-row button{flex:1;}
+
+  .status-card{
+    margin:18px 16px 0;
+    border-radius:14px;
+    padding:18px;
+    color:#fff;
+  }
+  .status-card.contains{background:var(--danger-bg);border:1px solid var(--danger);}
+  .status-card.traces{background:var(--warning-bg);border:1px solid var(--warning);}
+  .status-card.clear{background:var(--safe-bg);border:1px solid var(--safe);}
+  .status-card.unknown{background:var(--unknown-bg);border:1px solid #494c4f;}
+  .status-title{font-size:19px;font-weight:600;margin:0 0 4px;}
+  .status-sub{font-size:13px;opacity:.85;margin:0;}
+  .status-card .detail{
+    margin-top:14px;padding-top:12px;
+    border-top:1px solid rgba(255,255,255,.18);
+    font-size:13px;line-height:1.5;
+  }
+  .status-card .detail b{color:#fff;}
+  .status-card mark{
+    background:none;color:inherit;font-weight:700;
+    text-decoration:underline;text-decoration-color:currentColor;
+  }
+  .product-line{font-size:13px;opacity:.8;margin-top:2px;}
+
+  section.tools{margin:22px 16px 0;}
+  .tool-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:12px;
+  }
+  .tool-card h2{font-size:14px;margin:0 0 10px;}
+  .tool-card p.hint{font-size:12px;color:var(--muted);margin:8px 0 0;}
+  .tool-card input, .tool-card textarea{
+    width:100%;
+    font-family:inherit;
+    font-size:14px;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--paper);
+    color:var(--ink);
+    resize:vertical;
+  }
+  .tool-card textarea{min-height:80px;}
+  .tool-card .row{display:flex;gap:8px;margin-top:8px;}
+  .tool-card .row input{flex:1;}
+
+  .history{margin:22px 16px 0;}
+  .history h2{font-size:14px;margin:0 0 10px;color:var(--ink);}
+  .hist-item{
+    display:flex;justify-content:space-between;align-items:center;
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px;
+  }
+  .hist-tag{
+    font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px;color:#fff;
+  }
+  .hist-tag.contains{background:var(--danger);}
+  .hist-tag.traces{background:var(--warning);color:#3D2C0A;}
+  .hist-tag.clear{background:var(--safe);}
+  .hist-tag.unknown{background:var(--muted);}
+  .empty{font-size:13px;color:var(--muted);padding:8px 2px;}
+
+  footer{margin:24px 16px 0;font-size:11px;color:var(--muted);line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1>Sin Frutos Secos</h1>
+    <span>Open Food Facts</span>
+  </header>
+
+  <div class="scanner-wrap">
+    <div id="reader"></div>
+    <div class="scan-guide" id="scanGuide"><div class="box"></div></div>
+    <div class="scanner-off" id="scannerOff" style="display:none;"></div>
+  </div>
+
+  <div class="controls-row">
+    <button class="primary" id="btnStart">Iniciar cámara</button>
+    <button id="btnStop">Pausar</button>
+  </div>
+
+  <div id="resultArea"></div>
+
+  <section class="tools">
+    <div class="tool-card">
+      <h2>Buscar por código manualmente</h2>
+      <div class="row">
+        <input id="manualCode" inputmode="numeric" placeholder="Código de barras (EAN)">
+        <button class="primary" id="btnManual">Buscar</button>
+      </div>
+      <p class="hint">Útil si la cámara no lee bien el código.</p>
+    </div>
+
+    <div class="tool-card">
+      <h2>Comprobar una lista de ingredientes a mano</h2>
+      <textarea id="manualText" placeholder="Pega o escribe aquí los ingredientes (italiano, español o inglés)"></textarea>
+      <div class="row">
+        <button class="primary" id="btnCheckText" style="flex:1;">Comprobar texto</button>
+      </div>
+      <p class="hint">Para cuando el producto no está en la base de datos y tienes la etiqueta delante.</p>
+    </div>
+  </section>
+
+  <section class="history">
+    <h2>Historial de esta sesión</h2>
+    <div id="historyList"><p class="empty">Todavía no has escaneado nada.</p></div>
+  </section>
+
+  <footer>
+    Los datos de producto vienen de Open Food Facts, una base colaborativa: puede faltar el producto o estar incompleto, sobre todo con marcas locales italianas. Cuando el resultado sea "sin datos" o "revisar", comprueba siempre la etiqueta física. Esta app no sustituye la lectura del envase.
+  </footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+(function(){
+
+  // ---------- Términos de frutos secos (IT / ES / EN) ----------
+  const NUT_TERMS = [
+    // italiano
+    "frutta a guscio","mandorl","nocciol","noce","noci","anacard","pistacch",
+    "macadamia","noce del brasile","noci del brasile","noce pecan","pinol","arachid",
+    // español
+    "frutos secos","almendra","avellana","nuez","nueces","anacardo","pistacho",
+    "nuez de brasil","pacana","piñón","piñones","cacahuete","cacahuates","mani","maní",
+    // inglés / etiquetas internacionales
+    "tree nut","almond","hazelnut","walnut","cashew","pistachio","brazil nut",
+    "pecan","pine nut","peanut","nuts"
+  ];
+
+  // Falsos positivos frecuentes a excluir de "nuts" en inglés (p.ej. "nutmeg" = nuez moscada, no es fruto seco de alergia)
+  const FALSE_POSITIVE_GUARDS = ["nutmeg","nutritional","nutrition"];
+
+  function findNutMatches(text){
+    if(!text) return [];
+    const lower = text.toLowerCase();
+    const found = new Set();
+    NUT_TERMS.forEach(term=>{
+      let idx = lower.indexOf(term);
+      while(idx !== -1){
+        const context = lower.slice(Math.max(0,idx-3), idx+term.length+6);
+        const isFalse = FALSE_POSITIVE_GUARDS.some(fp=>context.includes(fp));
+        if(!isFalse) found.add(term);
+        idx = lower.indexOf(term, idx+term.length);
+      }
+    });
+    return Array.from(found);
+  }
+
+  function highlightText(text, matches){
+    if(!text) return "";
+    let out = text;
+    matches.sort((a,b)=>b.length-a.length).forEach(m=>{
+      const re = new RegExp("("+m.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+")","ig");
+      out = out.replace(re, "<mark>$1</mark>");
+    });
+    return out;
+  }
+
+  // ---------- Estado / historial ----------
+  let history = [];
+
+  function renderHistory(){
+    const el = document.getElementById('historyList');
+    if(history.length === 0){
+      el.innerHTML = '<p class="empty">Todavía no has escaneado nada.</p>';
+      return;
+    }
+    el.innerHTML = history.slice().reverse().map(h=>{
+      const labelMap = {contains:"Contiene", traces:"Trazas", clear:"Sin frutos secos", unknown:"Sin datos"};
+      return `<div class="hist-item">
+        <span>${h.name}</span>
+        <span class="hist-tag ${h.status}">${labelMap[h.status]}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function addHistory(name, status){
+    history.push({name, status});
+    renderHistory();
+  }
+
+  // ---------- Render de resultado ----------
+  function renderResult({status, title, sub, productLine, detailHtml}){
+    const el = document.getElementById('resultArea');
+    el.innerHTML = `
+      <div class="status-card ${status}">
+        <p class="status-title">${title}</p>
+        <p class="status-sub">${sub}</p>
+        ${productLine ? `<p class="product-line">${productLine}</p>` : ""}
+        ${detailHtml ? `<div class="detail">${detailHtml}</div>` : ""}
+      </div>
+    `;
+  }
+
+  function renderUnknown(barcode){
+    renderResult({
+      status:"unknown",
+      title:"Sin datos para este producto",
+      sub:`Código ${barcode} no encontrado en Open Food Facts.`,
+      detailHtml:"Revisa la etiqueta a mano, o pega los ingredientes abajo en la herramienta de comprobación de texto."
+    });
+    addHistory(barcode, "unknown");
+  }
+
+  // ---------- Consulta a Open Food Facts ----------
+  async function checkProduct(barcode){
+    renderResult({status:"unknown", title:"Buscando…", sub:`Código ${barcode}`});
+    try{
+      const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json?fields=product_name,brands,ingredients_text,ingredients_text_it,ingredients_text_es,ingredients_text_en,allergens_tags,traces_tags`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if(data.status !== 1 || !data.product){
+        renderUnknown(barcode);
+        return;
+      }
+
+      const p = data.product;
+      const name = p.product_name || "Producto sin nombre";
+      const brand = p.brands ? ` · ${p.brands}` : "";
+      const allergenTags = (p.allergens_tags || []).filter(t=>/nut/.test(t));
+      const traceTags = (p.traces_tags || []).filter(t=>/nut/.test(t));
+
+      const ingredientsCombined = [
+        p.ingredients_text_it, p.ingredients_text_es, p.ingredients_text_en, p.ingredients_text
+      ].filter(Boolean).join(" \n ");
+      const textMatches = findNutMatches(ingredientsCombined);
+
+      let status, title, sub, detailHtml;
+
+      if(allergenTags.length > 0){
+        status = "contains";
+        title = "Contiene frutos secos";
+        sub = "Declarado en el listado de alérgenos del producto.";
+      } else if(traceTags.length > 0){
+        status = "traces";
+        title = "Puede contener trazas";
+        sub = "El fabricante avisa de posible contaminación cruzada.";
+      } else if(textMatches.length > 0){
+        status = "traces";
+        title = "Revisar: aparece un término relacionado";
+        sub = "No está marcado como alérgeno, pero el texto de ingredientes lo menciona.";
+      } else if(ingredientsCombined.trim().length > 0){
+        status = "clear";
+        title = "Sin frutos secos detectados";
+        sub = "Ni en alérgenos declarados ni en el texto de ingredientes disponible.";
+      } else {
+        status = "unknown";
+        title = "Sin ingredientes registrados";
+        sub = "El alérgeno no está declarado y no hay texto de ingredientes en la base de datos.";
+      }
+
+      const highlighted = ingredientsCombined
+        ? highlightText(ingredientsCombined, textMatches.length ? textMatches : [])
+        : "";
+
+      detailHtml = "";
+      if(allergenTags.length) detailHtml += `<b>Alérgenos declarados:</b> ${allergenTags.map(t=>t.replace('en:','')).join(', ')}<br>`;
+      if(traceTags.length) detailHtml += `<b>Trazas declaradas:</b> ${traceTags.map(t=>t.replace('en:','')).join(', ')}<br>`;
+      if(highlighted) detailHtml += `<b>Ingredientes:</b><br>${highlighted}`;
+      if(!detailHtml) detailHtml = "No hay texto de ingredientes disponible para este producto en la base de datos.";
+
+      renderResult({
+        status, title, sub,
+        productLine: `${name}${brand}`,
+        detailHtml
+      });
+      addHistory(name, status);
+
+    } catch(err){
+      renderResult({
+        status:"unknown",
+        title:"Error de conexión",
+        sub:"No se ha podido consultar Open Food Facts. Comprueba tu conexión e inténtalo de nuevo."
+      });
+    }
+  }
+
+  // ---------- Comprobación manual de texto ----------
+  document.getElementById('btnCheckText').addEventListener('click', ()=>{
+    const text = document.getElementById('manualText').value;
+    const matches = findNutMatches(text);
+    if(!text.trim()){
+      renderResult({status:"unknown", title:"Pega un texto primero", sub:"Escribe o pega la lista de ingredientes arriba."});
+      return;
+    }
+    if(matches.length){
+      renderResult({
+        status:"traces",
+        title:"Se ha encontrado un término relacionado",
+        sub:"Revisa el contexto: podría ser el ingrediente en sí o una traza.",
+        detailHtml: highlightText(text, matches)
+      });
+    } else {
+      renderResult({
+        status:"clear",
+        title:"No se ha encontrado ningún término de frutos secos",
+        sub:"En el texto que has pegado, según la lista de términos conocida.",
+        detailHtml: text
+      });
+    }
+  });
+
+  // ---------- Búsqueda manual por código ----------
+  document.getElementById('btnManual').addEventListener('click', ()=>{
+    const code = document.getElementById('manualCode').value.trim();
+    if(code) checkProduct(code);
+  });
+
+  // ---------- Escáner de cámara ----------
+  let html5QrCode;
+  let scanning = false;
+  let lastCode = null;
+  let lastCodeTime = 0;
+
+  function onScanSuccess(decodedText){
+    const now = Date.now();
+    // evita relecturas repetidas del mismo código en menos de 4s
+    if(decodedText === lastCode && (now - lastCodeTime) < 4000) return;
+    lastCode = decodedText;
+    lastCodeTime = now;
+    checkProduct(decodedText);
+  }
+
+  async function startScanner(){
+    if(scanning) return;
+    document.getElementById('scannerOff').style.display = 'none';
+    document.getElementById('scanGuide').style.display = 'flex';
+    html5QrCode = new Html5Qrcode("reader");
+    try{
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 260, height: 140 },
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E
+          ]
+        },
+        onScanSuccess
+      );
+      scanning = true;
+    } catch(err){
+      document.getElementById('scanGuide').style.display = 'none';
+      const off = document.getElementById('scannerOff');
+      off.style.display = 'flex';
+      off.textContent = "No se pudo acceder a la cámara. Concede permiso o usa la búsqueda manual de abajo.";
+    }
+  }
+
+  async function stopScanner(){
+    if(!scanning) return;
+    try{ await html5QrCode.stop(); html5QrCode.clear(); } catch(e){}
+    scanning = false;
+    document.getElementById('scanGuide').style.display = 'none';
+    const off = document.getElementById('scannerOff');
+    off.style.display = 'flex';
+    off.textContent = "Cámara en pausa.";
+  }
+
+  document.getElementById('btnStart').addEventListener('click', startScanner);
+  document.getElementById('btnStop').addEventListener('click', stopScanner);
+
+  // arranque inicial
+  startScanner();
+
+})();
+</script>
+</body>
+</html>
